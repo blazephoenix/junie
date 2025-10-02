@@ -1,5 +1,11 @@
 import { ChatbotUIContext } from "@/context/context"
-import { IconCheck, IconCopy, IconEdit, IconRepeat } from "@tabler/icons-react"
+import {
+  IconCheck,
+  IconCopy,
+  IconEdit,
+  IconRepeat,
+  IconTrash
+} from "@tabler/icons-react"
 import { FC, useContext, useEffect, useState } from "react"
 import { WithTooltip } from "../ui/with-tooltip"
 
@@ -13,6 +19,7 @@ interface MessageActionsProps {
   onCopy: () => void
   onEdit: () => void
   onRegenerate: () => void
+  onDelete: () => void
 }
 
 export const MessageActions: FC<MessageActionsProps> = ({
@@ -22,7 +29,8 @@ export const MessageActions: FC<MessageActionsProps> = ({
   isHovering,
   onCopy,
   onEdit,
-  onRegenerate
+  onRegenerate,
+  onDelete
 }) => {
   const { isGenerating } = useContext(ChatbotUIContext)
 
@@ -92,6 +100,21 @@ export const MessageActions: FC<MessageActionsProps> = ({
                 onClick={handleCopy}
               />
             )
+          }
+        />
+      )}
+
+      {isHovering && (
+        <WithTooltip
+          delayDuration={1000}
+          side="bottom"
+          display={<div>Delete</div>}
+          trigger={
+            <IconTrash
+              className="cursor-pointer hover:opacity-50"
+              size={MESSAGE_ICON_SIZE}
+              onClick={onDelete}
+            />
           }
         />
       )}

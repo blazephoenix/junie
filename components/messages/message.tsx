@@ -34,6 +34,7 @@ interface MessageProps {
   onStartEdit: (message: Tables<"messages">) => void
   onCancelEdit: () => void
   onSubmitEdit: (value: string, sequenceNumber: number) => void
+  onDelete: (messageId: string) => void
 }
 
 export const Message: FC<MessageProps> = ({
@@ -43,7 +44,8 @@ export const Message: FC<MessageProps> = ({
   isLast,
   onStartEdit,
   onCancelEdit,
-  onSubmitEdit
+  onSubmitEdit,
+  onDelete
 }) => {
   const {
     assistants,
@@ -114,6 +116,10 @@ export const Message: FC<MessageProps> = ({
 
   const handleStartEdit = () => {
     onStartEdit(message)
+  }
+
+  const handleDelete = () => {
+    onDelete(message.id)
   }
 
   useEffect(() => {
@@ -199,6 +205,7 @@ export const Message: FC<MessageProps> = ({
             isEditing={isEditing}
             isHovering={isHovering}
             onRegenerate={handleRegenerate}
+            onDelete={handleDelete}
           />
         </div>
         <div className="space-y-3">
