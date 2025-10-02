@@ -16,12 +16,15 @@ export type OpenAILLMID =
   | "gpt-4" // GPT-4
   | "gpt-3.5-turbo" // Updated GPT-3.5 Turbo
 
-// Google Models
+// Google Models (UPDATED 10/02/25)
 export type GoogleLLMID =
-  | "gemini-pro" // Gemini Pro
-  | "gemini-pro-vision" // Gemini Pro Vision
+  | "gemini-2.5-pro" // Gemini 2.5 Pro - Most advanced model
+  | "gemini-2.5-flash" // Gemini 2.5 Flash - Best price-performance
+  | "gemini-2.0-flash-exp" // Gemini 2.0 Flash (Experimental)
   | "gemini-1.5-pro-latest" // Gemini 1.5 Pro
   | "gemini-1.5-flash" // Gemini 1.5 Flash
+  | "gemini-pro" // Gemini 1.0 Pro
+  | "gemini-pro-vision" // Gemini 1.0 Pro Vision
 
 // Anthropic Models
 export type AnthropicLLMID =

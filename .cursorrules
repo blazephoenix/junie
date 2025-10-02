@@ -1,0 +1,550 @@
+# CHATBOT UI PROJECT RULES
+
+## Project Overview
+This is Chatbot UI, an open-source AI chat application built with Next.js 14, TypeScript, Supabase, and Tailwind CSS. It's a full-stack application with multi-LLM support, file/image attachments, assistants, tools, and workspaces.
+
+## Critical Architecture Patterns
+
+### 1. File Organization
+- `/app` - Next.js 14 App Router pages and API routes (includes locale routing)
+- `/components` - React components organized by feature (chat, sidebar, workspace, etc.)
+- `/db` - Database access functions (one file per table)
+- `/lib` - Utility functions, hooks, and business logic
+- `/types` - TypeScript type definitions
+- `/supabase` - Database migrations and generated types
+- `/context` - React Context for global state management
+- `/worker` - Background worker scripts
+
+### 2. Import Path Conventions
+Always use `@/` alias for imports:
+```typescript
+import { supabase } from "@/lib/supabase/browser-client"
+import { Tables } from "@/supabase/types"
+import { cn } from "@/lib/utils"
+```
+
+### 3. Import Order (enforced by Prettier)
+1. CSS/SCSS files
+2. React imports
+3. Next.js imports
+4. Third-party modules
+5. Types (`@/types/*`)
+6. Config (`@/config/*`)
+7. Lib/utilities (`@/lib/*`)
+8. Hooks (`@/hooks/*`)
+9. UI components (`@/components/ui/*`)
+10. Feature components (`@/components/*`)
+11. App imports (`@/app/*`)
+12. Relative imports (`./` or `../`)
+
+## TypeScript Rules (CRITICAL)
+
+### 1. Strict Mode Enabled
+- **NEVER** use `any` type
+- **NEVER** use non-null assertion operator (`!`) except for environment variables
+- **NEVER** cast to unknown (e.g., `as unknown as T`)
+- **ALWAYS** define proper types/interfaces
+- **ALWAYS** use strict TypeScript checking
+
+### 2. Type Definitions
+- Use `Tables<"table_name">` from `@/supabase/types` for database types
+- Use `TablesInsert<"table_name">` for insert operations
+- Use `TablesUpdate<"table_name">` for update operations
+- Define custom types in `/types` directory with one file per domain concept
+- Export all types from `/types/index.ts`
+
+Example:
+```typescript
+import { Tables, TablesInsert, TablesUpdate } from "@/supabase/types"
+
+export const createChat = async (chat: TablesInsert<"chats">) => {
+  // implementation
+}
+
+export const updateChat = async (
+  chatId: string,
+  chat: TablesUpdate<"chats">
+) => {
+  // implementation
+}
+```
+
+### 3. Function Component Types
+```typescript
+import { FC } from "react"
+
+interface ComponentProps {
+  prop1: string
+  prop2?: number
+}
+
+export const Component: FC<ComponentProps> = ({ prop1, prop2 }) => {
+  // implementation
+}
+```
+
+## Code Style Rules (CRITICAL)
+
+### 1. String Conventions
+- **ALWAYS** use double quotes (`"`) for strings
+- **NEVER** use single quotes
+- Use template literals for string interpolation or multi-line strings
+- Use `.join()` instead of concatenation for arrays
+
+### 2. Semicolons
+- **NEVER** use semicolons (enforced by Prettier)
+
+### 3. Formatting
+- 2-space indentation
+- No trailing commas
+- Arrow functions without parentheses for single params: `x => x + 1`
+- Use `const` for all variables unless reassignment is needed
+
+## Database Patterns
+
+### 1. Database Access Layer Structure
+Each table has its own file in `/db` with standard CRUD functions:
+
+```typescript
+import { supabase } from "@/lib/supabase/browser-client"
+import { TablesInsert, TablesUpdate } from "@/supabase/types"
+
+// GET by ID
+export const getXById = async (id: string) => {
+  const { data, error } = await supabase
+    .from("table_name")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle() // or .single() if must exist
+
+  if (!data) {
+    throw new Error(error.message)
+  }
+
+  return data
+}
+
+// GET by relationship
+export const getXsByYId = async (yId: string) => {
+  const { data, error } = await supabase
+    .from("table_name")
+    .select("*")
+    .eq("y_id", yId)
+    .order("created_at", { ascending: false })
+
+  if (!data) {
+    throw new Error(error.message)
+  }
+
+  return data
+}
+
+// CREATE single
+export const createX = async (x: TablesInsert<"table_name">) => {
+  const { data, error } = await supabase
+    .from("table_name")
+    .insert([x])
+    .select("*")
+    .single()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data
+}
+
+// CREATE multiple
+export const createXs = async (xs: TablesInsert<"table_name">[]) => {
+  const { data, error } = await supabase
+    .from("table_name")
+    .insert(xs)
+    .select("*")
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data
+}
+
+// UPDATE
+export const updateX = async (
+  id: string,
+  x: TablesUpdate<"table_name">
+) => {
+  const { data, error } = await supabase
+    .from("table_name")
+    .update(x)
+    .eq("id", id)
+    .select("*")
+    .single()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data
+}
+
+// DELETE
+export const deleteX = async (id: string) => {
+  const { error } = await supabase
+    .from("table_name")
+    .delete()
+    .eq("id", id)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return true
+}
+```
+
+### 2. Supabase Client Usage
+- Use `@/lib/supabase/browser-client` for client-side operations
+- Use `@/lib/supabase/server` for server-side operations (Server Components, API routes)
+- Always handle errors properly
+- Use `.maybeSingle()` when record might not exist, `.single()` when it must exist
+
+### 3. Database Migrations
+- All migrations in `/supabase/migrations/`
+- Use timestamp-based naming: `YYYYMMDDHHMMSS_description.sql`
+- After migration changes, regenerate types: `npm run db-types`
+- Always include RLS (Row Level Security) policies
+- Include updated_at triggers using `update_updated_at_column()`
+
+## React/Next.js Patterns
+
+### 1. Component Structure
+- Use functional components with TypeScript
+- Define props interface inline or above component
+- Use `FC` type from React
+- Extract complex logic into custom hooks
+- Keep components focused and single-responsibility
+
+### 2. State Management
+- Use Context API for global state (`/context/context.tsx`)
+- Access context with `useContext(ChatbotUIContext)`
+- Use local `useState` for component-specific state
+- Use `useRef` for DOM references and mutable values
+- Custom hooks for reusable stateful logic (in `/lib/hooks` or component-specific `/chat-hooks`)
+
+### 3. Hooks Usage
+```typescript
+import { useContext, useState, useEffect } from "react"
+import { ChatbotUIContext } from "@/context/context"
+import useHotkey from "@/lib/hooks/use-hotkey"
+
+export const MyComponent: FC = () => {
+  const { profile, setProfile } = useContext(ChatbotUIContext)
+  const [localState, setLocalState] = useState<string>("")
+  
+  useHotkey("l", () => {
+    // hotkey handler
+  })
+  
+  useEffect(() => {
+    // side effects
+  }, [])
+  
+  return <div>...</div>
+}
+```
+
+### 4. Server vs Client Components
+- Use Server Components by default (Next.js 14 pattern)
+- Add `"use client"` directive only when needed:
+  - Using hooks (useState, useEffect, useContext)
+  - Using browser APIs
+  - Using event handlers
+  - Using Context providers
+
+### 5. Internationalization
+- Use `react-i18next` for translations
+- Access translations with `useTranslation()` hook
+- Files support multiple locales in `/app/[locale]/`
+
+## Component Patterns
+
+### 1. shadcn/ui Components
+- All base UI components in `/components/ui/`
+- Use `cn()` utility for className merging
+- Use `cva()` (class-variance-authority) for variant-based styling
+- Forward refs for proper DOM access
+
+Example:
+```typescript
+import { cn } from "@/lib/utils"
+import { cva, type VariantProps } from "class-variance-authority"
+
+const variants = cva(
+  "base-classes",
+  {
+    variants: {
+      variant: {
+        default: "variant-classes",
+        destructive: "destructive-classes"
+      },
+      size: {
+        default: "size-classes",
+        sm: "small-classes"
+      }
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default"
+    }
+  }
+)
+```
+
+### 2. Feature Components
+- Organized by domain in `/components/`
+- Use descriptive, specific names (e.g., `chat-input.tsx`, `chat-messages.tsx`)
+- Extract complex logic into custom hooks (e.g., `/components/chat/chat-hooks/`)
+- Props interface should be clearly defined
+
+### 3. Icons
+- Use `@tabler/icons-react` for icons
+- Import only needed icons to reduce bundle size
+- Consistent icon sizing and styling
+
+## Styling Patterns
+
+### 1. Tailwind CSS
+- Use Tailwind utility classes for all styling
+- **NEVER** write custom CSS unless absolutely necessary
+- Use `cn()` helper to merge className strings
+- Use CSS variables for theme colors (defined in Tailwind config)
+
+### 2. Dark Mode
+- Support dark mode with `next-themes`
+- Use Tailwind's dark mode class strategy
+- Use semantic color tokens (e.g., `bg-background`, `text-foreground`)
+
+### 3. Responsive Design
+- Mobile-first approach
+- Use Tailwind responsive prefixes: `sm:`, `md:`, `lg:`, `xl:`, `2xl:`
+
+## Error Handling
+
+### 1. Database Operations
+- Always wrap in try-catch or use error returns
+- Throw descriptive errors with context
+- Handle both data and error from Supabase responses
+
+### 2. User-Facing Errors
+- Use `sonner` for toast notifications
+- Import: `import { toast } from "sonner"`
+- Provide clear, actionable error messages
+
+```typescript
+import { toast } from "sonner"
+
+try {
+  await someOperation()
+  toast.success("Operation successful")
+} catch (error) {
+  toast.error("Operation failed: " + error.message)
+}
+```
+
+## API Routes Pattern
+
+### 1. Structure
+- All API routes in `/app/api/`
+- Use Next.js 14 Route Handlers
+- Export functions: `GET`, `POST`, `PUT`, `DELETE`, `PATCH`
+
+### 2. Error Response
+```typescript
+import { NextResponse } from "next/server"
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json()
+    // handle request
+    return NextResponse.json({ data })
+  } catch (error) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    )
+  }
+}
+```
+
+## Testing
+
+### 1. Jest Configuration
+- Tests in `/__tests__/` directory
+- Use `@testing-library/react` and `@testing-library/jest-dom`
+- Run with: `npm test`
+
+## Environment Variables
+
+### 1. Required Variables
+- `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anon key
+- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key (server-only)
+- API keys for LLM providers (optional, can be set in UI)
+
+### 2. Usage
+- Access with `process.env.VARIABLE_NAME`
+- Use `!` assertion only for required env vars (exception to no-assertion rule)
+- Validate env vars in `/lib/envs.ts`
+
+## Comments and Documentation
+
+### 1. JSDoc Headers
+- **ALWAYS** add JSDoc comments to exported functions
+- Include description, parameters, and return type
+
+```typescript
+/**
+ * Creates a new chat in the database
+ * @param chat - The chat object to insert
+ * @returns The created chat with generated ID
+ * @throws Error if creation fails
+ */
+export const createChat = async (chat: TablesInsert<"chats">) => {
+  // implementation
+}
+```
+
+### 2. Inline Comments
+- Explain complex logic or non-obvious decisions
+- Use `//` for single-line comments
+- Keep comments up-to-date with code changes
+
+## Performance Considerations
+
+### 1. Images
+- Use Next.js `Image` component
+- Configure remote patterns in `next.config.js`
+- Lazy load when appropriate
+
+### 2. Code Splitting
+- Dynamic imports for heavy components
+- Route-based code splitting (automatic with App Router)
+
+### 3. Bundle Analysis
+- Run `npm run analyze` to check bundle size
+- Keep third-party dependencies minimal
+
+## Common Utilities
+
+### 1. Class Name Merging
+```typescript
+import { cn } from "@/lib/utils"
+
+<div className={cn("base-classes", conditionalClass && "extra-classes")} />
+```
+
+### 2. Date Formatting
+```typescript
+import { formatDate } from "@/lib/utils"
+
+const formatted = formatDate(new Date())
+```
+
+## Development Workflow
+
+### 1. Local Development
+- Start Supabase: `supabase start`
+- Start dev server: `npm run dev` or `npm run chat`
+- View at: `http://localhost:3000`
+- Supabase Studio: `http://localhost:54323/project/default/editor`
+
+### 2. Database Changes
+- Create migration: `supabase migration new <name>`
+- Apply migrations: `npm run db-migrate`
+- Generate types: `npm run db-types`
+- Reset database: `npm run db-reset` (caution: deletes all data)
+
+### 3. Code Quality
+- Lint: `npm run lint`
+- Fix linting: `npm run lint:fix`
+- Format: `npm run format:write`
+- Type check: `npm run type-check`
+- Run all: `npm run clean`
+
+## Security Considerations
+
+### 1. Row Level Security (RLS)
+- All tables must have RLS policies
+- Policies should check `auth.uid()` for user ownership
+- Service role key bypasses RLS (use carefully)
+
+### 2. API Keys
+- Store securely as environment variables
+- Never commit keys to repository
+- Allow users to input their own keys via UI settings
+
+### 3. File Uploads
+- Validate file types and sizes
+- Use Supabase Storage with proper policies
+- Store file metadata in database
+
+## Special Features
+
+### 1. Multi-LLM Support
+- Models defined in `/lib/models/llm/llm-list`
+- Support for OpenAI, Anthropic, Google, Azure, Mistral, Groq, OpenRouter, Ollama
+- Custom model configuration in database
+
+### 2. File Processing
+- Support for PDF, DOCX, TXT, CSV, JSON, Markdown
+- File parsing utilities in `/lib/`
+- Vector embeddings for retrieval (using pgvector)
+
+### 3. Assistants and Tools
+- OpenAI Assistant API integration
+- Custom tools defined in database
+- Tool execution during chat
+
+### 4. Workspaces
+- Multi-workspace support per user
+- Workspace-scoped data (chats, files, assistants, etc.)
+- Workspace settings and images
+
+## Key Dependencies
+
+- **Next.js 14** - App Router, Server Components
+- **React 18** - UI library
+- **TypeScript 5** - Type safety
+- **Supabase** - Database, Auth, Storage
+- **Tailwind CSS 3** - Styling
+- **Radix UI** - Accessible component primitives
+- **shadcn/ui** - Pre-built components
+- **Vercel AI SDK** - LLM streaming utilities
+- **react-i18next** - Internationalization
+- **Zod** - Schema validation
+- **sonner** - Toast notifications
+
+## Maintenance Notes
+
+### 1. Updating the Project
+```bash
+npm run update  # Pull latest code and apply migrations
+npm run db-push # Push migrations to hosted database
+```
+
+### 2. Adding New Features
+1. Create database migration if needed
+2. Update types: `npm run db-types`
+3. Add database access functions in `/db`
+4. Create/update components
+5. Add to context if global state needed
+6. Test locally with Supabase
+7. Update documentation
+
+### 3. Common Gotchas
+- Remember to regenerate types after schema changes
+- Context changes require updating both interface and default values
+- File imports must use `@/` prefix
+- String literals must use double quotes
+- No semicolons in code
+
