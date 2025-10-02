@@ -1,3 +1,6 @@
+/**
+ * Exports local storage data as JSON for backup purposes
+ */
 export function exportLocalStorageAsJSON() {
   const data: { [key: string]: string | null } = {}
   for (let i = 0; i < localStorage.length; i++) {
@@ -13,7 +16,7 @@ export function exportLocalStorageAsJSON() {
 
   const a = document.createElement("a")
   a.href = url
-  a.download = "chatbot-ui-data.json"
+  a.download = "junie-data.json"
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
